@@ -5,10 +5,13 @@ import { PasswordField } from "../components/PasswordField.js";
 import { Title } from "../components/Title.js";
 import { Button } from "../components/Button.js";
 import { translateError } from "../utils/translateError.js";
-import { useNavigate } from "react-router-dom";
+import { RouterService } from "../services/RouterService.js";
 
-export const Login = () => {
-  const navigate = useNavigate();
+type LoginProps = {
+  routerService: RouterService
+}
+
+export const Login = ({routerService} : LoginProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState(null);
@@ -16,6 +19,7 @@ export const Login = () => {
 
   useEffect(() => {
     setErrorMessage(null);
+    
   }, [email, password]);
 
   return (
@@ -45,7 +49,7 @@ export const Login = () => {
               localStorage.setItem("token", payload.jwt);
             })
             .then(() => {
-              navigate("/recipes");
+              routerService.goToRecipes();
             })
             .catch((error) => {
               setErrorMessage(error.message);
