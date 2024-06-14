@@ -1,3 +1,5 @@
+import { DomainError } from "../utils/ErrorBoundary";
+
 interface AuthService {
   login: (username: string, password: string) => Promise<{ jwt: string }>
 }
@@ -16,7 +18,7 @@ export class AuthServiceLogin implements AuthService {
     .then(response => response.json())
     .then(data => {
       if (data.status === "error") {
-        throw new Error(data.code);
+        throw new DomainError(data.code);
       }
       return { jwt: data.payload.jwt };
     });

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import * as Sentry from '@sentry/react';
+import { useCallback, useEffect, useState } from "react";
 import "./Login.css";
 import { EmailField } from "../components/EmailField.js";
 import { PasswordField } from "../components/PasswordField.js";
@@ -8,6 +9,7 @@ import { translateError } from "../utils/translateError.js";
 import { RouterService } from "../services/RouterService.js";
 import { AuthServiceLogin } from "../services/AuthService.js";
 import { LocalStorageServiceToken } from "../services/LocalStorageService.js";
+import { DomainError } from '../utils/ErrorBoundary.js';
 
 type LoginProps = {
   routerService: RouterService,
@@ -16,11 +18,26 @@ type LoginProps = {
 
 }
 
+export const useAsyncError = () => {
+  const [, setError] = useState();
+  const useCallback1 = useCallback(
+    (e: any) => {
+      setError(() => {
+        throw e;
+      });
+    },
+    [setError],
+  );
+  return { propagateError: useCallback1 };
+};
+
 export const Login = ({routerService, authService, localStorageService} : LoginProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState <string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { propagateError } = useAsyncError()
 
   useEffect(() => {
     setErrorMessage(null);
@@ -36,24 +53,7 @@ export const Login = ({routerService, authService, localStorageService} : LoginP
           setIsLoading(true);
           setErrorMessage(null);
 
-
           authService.login(email, password)
-
-          /* fetch("https://backend-login-placeholder.deno.dev/api/users/login", {
-            method: "POST",
-            body: JSON.stringify({ email, password }),
-            headers: {
-              "Content-Type": "application/json",
-            },
-            
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.status === "error") {
-                throw new Error(data.code);
-              }
-              return data.payload;
-            }) */
             .then((payload) => {
               localStorageService.setToken(payload.jwt)
             }) 
@@ -61,8 +61,14 @@ export const Login = ({routerService, authService, localStorageService} : LoginP
               routerService.goToRecipes();
             })
             .catch((error) => {
-              setErrorMessage(error.message);
+              if (error instanceof DomainError) {
+                console.log(error.code);
+                setErrorMessage(error.code);
+                return;
+              }
+              throw error;
             })
+            .catch(propagateError)
             .finally(() => {
               setIsLoading(false);
             });
